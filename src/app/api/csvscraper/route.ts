@@ -23,7 +23,5 @@ export async function POST() {
   const pageTitle = await page.title();
   await browser.close();
 
-  console.log(pageTitle);
-
-  return Response.json({ message: 'Hello from CSV Scraper' + pageTitle });
+  return Response.json(processedResults);
 }
