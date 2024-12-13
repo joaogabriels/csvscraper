@@ -1,6 +1,7 @@
 import chromium from '@sparticuz/chromium-min';
 import puppeteer from 'puppeteer-core';
 import Papa from 'papaparse';
+import { put as vercelBlobPut } from '@vercel/blob';
 
 chromium.setHeadlessMode = true;
 chromium.setGraphicsMode = false;
@@ -212,14 +213,28 @@ export async function POST() {
   await chromium.font('https://raw.githack.com/googlei18n/noto-emoji/master/fonts/NotoColorEmoji.ttf');
 
   const isDev = !! process.env.CHROME_EXECUTABLE_PATH;
-  const csvUrl ='https://mcdyyvdidqq74zwz.public.blob.vercel-storage.com/Teste%20Pr%C3%A1tico%20-%20Jo%C3%A3o%20-%20taggeamento-kdQtKZGo0gVDjPRddDh75nauB0527y.csv';
+  const csvUrl = 'https://mcdyyvdidqq74zwz.public.blob.vercel-storage.com/Teste%20Pr%C3%A1tico%20-%20Jo%C3%A3o%20-%20taggeamento-kdQtKZGo0gVDjPRddDh75nauB0527y.csv';
 
-  const rows = (await fetchCsvData(csvUrl)).slice(0, 5);
-  const browser = await initializeBrowser(isDev);
-  const maxParallel = 10;
+  try {
+    const rows = (await fetchCsvData(csvUrl)).slice(0, 5);
 
-  const parsedData = await processAllRows(rows, maxParallel, browser);
-  await browser.close();
+    const browser = await initializeBrowser(isDev);
+    const maxParallel = 10;
 
-  return Response.json({ parsed_data: parsedData });
+    const parsedData = await processAllRows(rows, maxParallel, browser);
+    await browser.close();
+
+    const csvData = Papa.unparse(parsedData);
+
+    const { url } = await vercelBlobPut('updated-data.csv', csvData, {
+      access: 'public',
+      contentType: 'text/csv',
+    });
+
+    return new Response(JSON.stringify({ file_url: url }), { status: 200 });
+  } catch (error) {
+    console.error(error);
+
+    return new Response(JSON.stringify({ error: 'Failed to process and upload CSV' }), { status: 500 });
+  }
 }
