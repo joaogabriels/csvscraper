@@ -8,6 +8,7 @@ chromium.setGraphicsMode = false;
 const fetchCsvData = async (url) => {
   const response = await fetch(url);
   const text = await response.text();
+
   return Papa.parse(text, { header: true }).data;
 };
 
@@ -52,8 +53,72 @@ const detectVideoPlayer = async (page) => {
   return '-';
 };
 
+const parseTicketValue = (value) => {
+  const match = value.match(/\d{1,3}(?:\.\d{3})*,\d{2}/);
+
+  return match ? match[0].replace(/\./g, '') : value;
+};
+
+const getTicketValue = async (page) => {
+  try {
+    const selectors = [
+      'select[name="installment"]',
+      'select[name="installments"]',
+      'select[name="parcelamento"]',
+      'select[name="cartao"]',
+      'select[name="payment"]',
+      'select[data-name="parcelamento"]',
+    ];
+
+    let ticketSelect = null;
+
+    for (const selector of selectors) {
+      ticketSelect = await page.$(selector);
+      if (ticketSelect) break;
+    }
+
+    if (! ticketSelect) ticketSelect = await page.$('select');
+
+    const isKiwify = /kiwify/i.test(page.url());
+
+    if (isKiwify) {
+      const telInput = await page.$('select[name="tel"]');
+      if (telInput) {
+        const ticketValue = await page.evaluate((el) => el.innerText, telInput);
+
+        return ticketValue.split('\n').find((value) => /\d+/.test(value)) || '-';
+      }
+    }
+
+    if (! ticketSelect) return '-';
+
+    const options = await ticketSelect.$$('option');
+
+    if (! options || options.length === 0) return '-';
+
+    const parsedOptions = await Promise.all(
+      options.map(async (option) => ({
+        value: await option.evaluate((el) => el.value.trim()),
+        text: await option.evaluate((el) => el.textContent.trim()),
+      }))
+    );
+
+    const ticketOption = parsedOptions.find(
+      (opt) => /\d+/.test(opt.text) && opt.text.includes('R$')
+    );
+
+    if (ticketOption) {
+      return ticketOption.text || ticketOption.value || '-';
+    }
+
+    return parsedOptions[0]?.text || parsedOptions[0]?.value || '-';
+  } catch {
+    return '-';
+  }
+};
+
 const processRow = async (row, browser) => {
-  if (!row.dominio) {
+  if (! row.dominio) {
     return { page_url: '-', technology: '-', video_player: '-', ticket: '-' };
   }
 
@@ -81,9 +146,9 @@ const processRow = async (row, browser) => {
     if (! testForCheckout(currentUrl) && anchorElements) {
       const anchors = await Promise.all(anchorElements.map((el) => el.evaluate((a) => a.href)));
 
-      const hasCheckout = anchors.some((href) =>
-        testForCheckout(href) &&
-        ! href.includes(row.dominio.split('//')[1].split('/')[0])
+      const hasCheckout = anchors.some(
+        (href) => testForCheckout(href)
+        && ! href.includes(row.dominio.split('//')[1].split('/')[0])
       );
 
       if (! hasCheckout) {
@@ -92,26 +157,36 @@ const processRow = async (row, browser) => {
         return { page_url: '-', technology, video_player: '-', ticket: '-' };
       }
 
-      const checkoutAnchor = anchors.find(
-        (href) => testForCheckout(href) && ! href.includes('#checkout') && ! href.includes('about')
-      );
+      const checkoutAnchor = anchors
+        .find(
+          (href) => testForCheckout(href)
+          && ! href.includes('#checkout')
+          && ! href.includes('about')
+        );
 
       if (checkoutAnchor) {
         await page.goto(checkoutAnchor, { waitUntil: 'domcontentloaded' });
-
         await page.waitForSelector('body');
       }
     }
 
-    const parsedPageUrl = page.url() === row.dominio || ! testForCheckout(page.url())
-      ? '-'
-      : page.url();
+    const parsedPageUrl =
+      page.url() === row.dominio || !testForCheckout(page.url())
+        ? '-'
+        : page.url();
 
+    const ticket = await getTicketValue(page);
     await page.close();
 
-    return { page_url: parsedPageUrl, technology, video_player: videoPlayer };
+    return {
+      page_url: parsedPageUrl,
+      technology,
+      video_player: videoPlayer,
+      ticket: parseTicketValue(ticket),
+    };
   } catch {
     await page.close();
+
     return { page_url: '-', technology: '-', video_player: '-', ticket: '-' };
   }
 };
@@ -137,10 +212,9 @@ export async function POST() {
   await chromium.font('https://raw.githack.com/googlei18n/noto-emoji/master/fonts/NotoColorEmoji.ttf');
 
   const isDev = !! process.env.CHROME_EXECUTABLE_PATH;
-  const csvUrl = 'https://mcdyyvdidqq74zwz.public.blob.vercel-storage.com/Teste%20Pr%C3%A1tico%20-%20Jo%C3%A3o%20-%20taggeamento-kdQtKZGo0gVDjPRddDh75nauB0527y.csv';
+  const csvUrl ='https://mcdyyvdidqq74zwz.public.blob.vercel-storage.com/Teste%20Pr%C3%A1tico%20-%20Jo%C3%A3o%20-%20taggeamento-kdQtKZGo0gVDjPRddDh75nauB0527y.csv';
 
-  const rows = (await fetchCsvData(csvUrl)).slice(0, 25);
-
+  const rows = (await fetchCsvData(csvUrl)).slice(0, 5);
   const browser = await initializeBrowser(isDev);
   const maxParallel = 10;
 
