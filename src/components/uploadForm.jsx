@@ -13,6 +13,12 @@ export default function UploadForm() {
     setFileUrl('');
   };
 
+  const resetForm = () => {
+    setFile(null);
+    setUploadStatus('');
+    setFileUrl('');
+  }
+
   const handleSubmit = async (event) => {
     event.preventDefault();
 
@@ -56,6 +62,8 @@ export default function UploadForm() {
         <input type="file" accept=".csv" onChange={handleFileChange} className="bg-foreground text-background rounded-sm" />
 
         <button type="submit" className="bg-foreground text-background rounded-sm" disabled={!! uploadStatus}>Processar</button>
+
+        {fileUrl && <button onClick={() => resetForm()} className="bg-foreground text-background rounded-sm">Limpar</button>}
       </form>
 
       {uploadStatus && <p className="max-w-96">{uploadStatus}</p>}

@@ -120,8 +120,16 @@ const getTicketValue = async (page) => {
 };
 
 const processRow = async (row, browser) => {
+  const defaultProcessedRow = {
+    ...row,
+    link_checkout: '-',
+    technology: '-',
+    player: '-',
+    ticket: '-',
+  };
+
   if (! row.dominio) {
-    return { page_url: '-', technology: '-', video_player: '-', ticket: '-' };
+    return defaultProcessedRow;
   }
 
   const page = await browser.newPage();
@@ -156,7 +164,7 @@ const processRow = async (row, browser) => {
       if (! hasCheckout) {
         await page.close();
 
-        return { page_url: '-', technology, video_player: '-', ticket: '-' };
+        return defaultProcessedRow;
       }
 
       const checkoutAnchor = anchors
@@ -181,15 +189,14 @@ const processRow = async (row, browser) => {
     await page.close();
 
     return {
-      page_url: parsedPageUrl,
+      ...defaultProcessedRow,
+      link_checkout: parsedPageUrl,
       technology,
-      video_player: videoPlayer,
+      player: videoPlayer,
       ticket: parseTicketValue(ticket),
     };
   } catch {
-    await page.close();
-
-    return { page_url: '-', technology: '-', video_player: '-', ticket: '-' };
+    return defaultProcessedRow;
   }
 };
 
