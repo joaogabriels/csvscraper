@@ -79,7 +79,9 @@ const getTicketValue = async (page) => {
       if (telInput) {
         const ticketValue = await page.evaluate((el) => el.innerText, telInput);
 
-        return ticketValue.split('\n').find((value) => /\d+/.test(value)) || '-';
+        console.log(ticketValue.split('\n'));
+
+        return ticketValue.split('\n')[ticketValue.split('\n').length - 1];
       }
     }
 
@@ -96,9 +98,7 @@ const getTicketValue = async (page) => {
       }))
     );
 
-    const ticketOption = parsedOptions.find(
-      (opt) => /\d+/.test(opt.text) && opt.text.includes('R$')
-    );
+    const ticketOption = parsedOptions.find((opt) => /\d+/.test(opt.text));
 
     if (ticketOption) {
       return ticketOption.text || ticketOption.value || '-';
@@ -114,7 +114,7 @@ const processRow = async (row, browser) => {
   const defaultProcessedRow = {
     ...row,
     link_checkout: '-',
-    technology: '-',
+    tecnologia: '-',
     player: '-',
     ticket: '-',
   };
@@ -182,7 +182,7 @@ const processRow = async (row, browser) => {
     return {
       ...defaultProcessedRow,
       link_checkout: parsedPageUrl,
-      technology,
+      tecnologia: technology,
       player: videoPlayer,
       ticket: parseTicketValue(ticket),
     };
