@@ -1,11 +1,13 @@
 'use client'
 
+import { useRouter } from 'next/navigation';
 import { useState } from 'react'
 
 export default function UploadForm() {
   const [file, setFile] = useState(null);
   const [uploadStatus, setUploadStatus] = useState('');
   const [fileUrl, setFileUrl] = useState('');
+  const router = useRouter();
 
   const handleFileChange = (event) => {
     setFile(event.target.files[0]);
@@ -13,14 +15,9 @@ export default function UploadForm() {
     setFileUrl('');
   };
 
-  const resetForm = () => {
-    setFile(null);
-    setUploadStatus('');
-    setFileUrl('');
-  }
-
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setFileUrl('');
 
     if (!file) {
       setUploadStatus('Adicione um arquivo antes de tentar processar.');
@@ -44,6 +41,7 @@ export default function UploadForm() {
       const result = await response.json();
       if (response.ok) {
         setFileUrl(`Arquivo gerado: ${result.file_url}`);
+        setUploadStatus('');
 
         const a = document.createElement('a');
         a.href = result.file_url;
@@ -63,7 +61,7 @@ export default function UploadForm() {
 
         <button type="submit" className="bg-foreground text-background rounded-sm" disabled={!! uploadStatus}>Processar</button>
 
-        {fileUrl && <button onClick={() => resetForm()} className="bg-foreground text-background rounded-sm">Limpar</button>}
+        {fileUrl && <button onClick={() => { router.refresh(); setFile(null)}} className="bg-foreground text-background rounded-sm">Limpar</button>}
       </form>
 
       {uploadStatus && <p className="max-w-96">{uploadStatus}</p>}

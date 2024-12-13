@@ -1,7 +1,7 @@
-import chromium from '@sparticuz/chromium-min';
-import puppeteer from 'puppeteer-core';
-import Papa from 'papaparse';
-import { put as vercelBlobPut } from '@vercel/blob';
+import chromium from "@sparticuz/chromium-min";
+import puppeteer from "puppeteer-core";
+import Papa from "papaparse";
+import { put as vercelBlobPut } from "@vercel/blob";
 
 chromium.setHeadlessMode = true;
 chromium.setGraphicsMode = false;
@@ -21,34 +21,35 @@ const detectTechnology = async (page) => {
   const content = await page.content();
   const url = page.url();
 
-  if (/wordpress|elementor/i.test(content)) return 'wordpress/elementor';
-  if (/atomicat/i.test(content)) return 'atomicat';
-  if (/greatsoftware|greatpages/i.test(content)) return 'greatsoftware/greatpages';
-  if (/clickfunnels/i.test(content)) return 'clickfunnels';
-  if (/framer/i.test(content)) return 'framer';
-  if (/webflow/i.test(content)) return 'webflow';
-  if (/\.hotmart\.host/i.test(url)) return 'hotmart pages';
+  if (/wordpress|elementor/i.test(content)) return "wordpress/elementor";
+  if (/atomicat/i.test(content)) return "atomicat";
+  if (/greatsoftware|greatpages/i.test(content))
+    return "greatsoftware/greatpages";
+  if (/clickfunnels/i.test(content)) return "clickfunnels";
+  if (/framer/i.test(content)) return "framer";
+  if (/webflow/i.test(content)) return "webflow";
+  if (/\.hotmart\.host/i.test(url)) return "hotmart pages";
 
-  return '-';
+  return "-";
 };
 
 const detectVideoPlayer = async (page) => {
   const content = await page.content();
 
-  if (/pandavideo/i.test(content)) return 'pandavideo';
-  if (/vturb|smartplayer/i.test(content)) return 'vturb';
-  if (/youtube\.com|youtube-nocookie\.com/i.test(content)) return 'youtube';
-  if (/vimeo\.com/i.test(content)) return 'vimeo';
-  if (/vidallytics/i.test(content)) return 'vidallytics';
-  if (/wistia/i.test(content)) return 'wistia';
+  if (/pandavideo/i.test(content)) return "pandavideo";
+  if (/vturb|smartplayer/i.test(content)) return "vturb";
+  if (/youtube\.com|youtube-nocookie\.com/i.test(content)) return "youtube";
+  if (/vimeo\.com/i.test(content)) return "vimeo";
+  if (/vidallytics/i.test(content)) return "vidallytics";
+  if (/wistia/i.test(content)) return "wistia";
 
-  return '-';
+  return "-";
 };
 
 const parseTicketValue = (value) => {
   const match = value.match(/\d{1,3}(?:\.\d{3})*,\d{2}/);
 
-  return match ? match[0].replace(/\./g, '') : value;
+  return match ? match[0].replace(/\./g, "") : value;
 };
 
 const getTicketValue = async (page) => {
@@ -70,26 +71,28 @@ const getTicketValue = async (page) => {
       if (ticketSelect) break;
     }
 
-    if (! ticketSelect) ticketSelect = await page.$('select');
+    if (!ticketSelect) ticketSelect = await page.$("select");
 
     const isKiwify = /kiwify/i.test(page.url());
 
     if (isKiwify) {
       const telInput = await page.$('select[name="tel"]');
+
       if (telInput) {
         const ticketValue = await page.evaluate((el) => el.innerText, telInput);
 
-        console.log(ticketValue.split('\n'));
-
-        return ticketValue.split('\n')[ticketValue.split('\n').length - 1];
+        // return ticketValue.split("\n")[ticketValue.split("\n").length - 1];
+        return !! parseInt(ticketValue.split("\n")[ticketValue.split("\n").length - 1])
+          ? ticketValue.split("\n")[ticketValue.split("\n").length - 1]
+          : "-";
       }
     }
 
-    if (! ticketSelect) return '-';
+    if (!ticketSelect) return "-";
 
-    const options = await ticketSelect.$$('option');
+    const options = await ticketSelect.$$("option");
 
-    if (! options || options.length === 0) return '-';
+    if (!options || options.length === 0) return "-";
 
     const parsedOptions = await Promise.all(
       options.map(async (option) => ({
@@ -100,34 +103,34 @@ const getTicketValue = async (page) => {
 
     const ticketOption = parsedOptions.find((opt) => /\d+/.test(opt.text));
 
-    if (ticketOption) {
-      return ticketOption.text || ticketOption.value || '-';
+    if (ticketOption && !! parseInt(ticketOption.text)) {
+      return ticketOption.text || ticketOption.value;
     }
 
-    return parsedOptions[0]?.text || parsedOptions[0]?.value || '-';
+    return "-";
   } catch {
-    return '-';
+    return "-";
   }
 };
 
 const processRow = async (row, browser) => {
   const defaultProcessedRow = {
     ...row,
-    link_checkout: '-',
-    tecnologia: '-',
-    player: '-',
-    ticket: '-',
+    link_checkout: "-",
+    tecnologia: "-",
+    player: "-",
+    ticket: "-",
   };
 
-  if (! row.dominio) {
+  if (!row.dominio) {
     return defaultProcessedRow;
   }
 
   const page = await browser.newPage();
   await page.setRequestInterception(true);
 
-  page.on('request', (req) => {
-    if (['image', 'stylesheet', 'font'].includes(req.resourceType())) {
+  page.on("request", (req) => {
+    if (["image", "stylesheet", "font"].includes(req.resourceType())) {
       req.abort();
     } else {
       req.continue();
@@ -135,48 +138,55 @@ const processRow = async (row, browser) => {
   });
 
   try {
-    await page.goto(row.dominio.split('?')[0], { waitUntil: 'domcontentloaded' });
+    await page.goto(row.dominio.split("?")[0], {
+      waitUntil: "domcontentloaded",
+    });
     const technology = await detectTechnology(page);
     const videoPlayer = await detectVideoPlayer(page);
 
     const testForCheckout = (value) => /checkout|pay/i.test(value);
 
-    const anchorElements = await page.$$('a');
+    const anchorElements = await page.$$("a");
     const currentUrl = page.url();
 
-    if (! testForCheckout(currentUrl) && anchorElements) {
-      const anchors = await Promise.all(anchorElements.map((el) => el.evaluate((a) => a.href)));
-
-      const hasCheckout = anchors.some(
-        (href) => testForCheckout(href)
-        && ! href.includes(row.dominio.split('//')[1].split('/')[0])
+    if (!testForCheckout(currentUrl) && anchorElements) {
+      const anchors = await Promise.all(
+        anchorElements.map((el) => el.evaluate((a) => a.href))
       );
 
-      if (! hasCheckout) {
+      const hasCheckout = anchors.some(
+        (href) =>
+          testForCheckout(href) &&
+          ! href.includes(row.dominio.split("//")[1].split("/")[0])
+      );
+
+      if (!hasCheckout) {
         await page.close();
 
         return defaultProcessedRow;
       }
 
-      const checkoutAnchor = anchors
-        .find(
-          (href) => testForCheckout(href)
-          && ! href.includes('#checkout')
-          && ! href.includes('about')
-        );
+      const checkoutAnchor = anchors.find(
+        (href) =>
+          testForCheckout(href) &&
+          !href.includes("#checkout") &&
+          !href.includes("about")
+      );
 
       if (checkoutAnchor) {
-        await page.goto(checkoutAnchor, { waitUntil: 'domcontentloaded' });
-        await page.waitForSelector('body');
+        await page.goto(checkoutAnchor, { waitUntil: "domcontentloaded" });
+        await page.waitForSelector("body");
       }
     }
 
-    const parsedPageUrl =
-      page.url() === row.dominio || !testForCheckout(page.url())
-        ? '-'
+    const parsedPageUrl = page.url() === row.dominio || ! testForCheckout(page.url()) || page.url().includes(row.dominio.split("//")[1].split("/")[0])
+        ? "-"
         : page.url();
 
-    const ticket = await getTicketValue(page);
+    const ticket = testForCheckout(page.url())
+      ? await getTicketValue(page)
+      : "-";
+
     await page.close();
 
     return {
@@ -192,6 +202,8 @@ const processRow = async (row, browser) => {
 };
 
 const processBatch = async (batch, browser) => {
+  console.count("Batch processed");
+
   return Promise.all(batch.map((row) => processRow(row, browser)));
 };
 
@@ -209,13 +221,15 @@ const processAllRows = async (rows, batchSize, browser) => {
 };
 
 export async function POST(request) {
-  await chromium.font('https://raw.githack.com/googlei18n/noto-emoji/master/fonts/NotoColorEmoji.ttf');
+  await chromium.font(
+    "https://raw.githack.com/googlei18n/noto-emoji/master/fonts/NotoColorEmoji.ttf"
+  );
 
-  const isDev = !! process.env.CHROME_EXECUTABLE_PATH;
+  const isDev = !!process.env.CHROME_EXECUTABLE_PATH;
 
   try {
     const csvText = await request.text();
-    const rows = Papa.parse(csvText, { header: true }).data.slice(0, 10);
+    const rows = Papa.parse(csvText, { header: true }).data;
 
     const browser = await initializeBrowser(isDev);
     const maxParallel = 10;
@@ -225,15 +239,18 @@ export async function POST(request) {
 
     const csvData = Papa.unparse(parsedData);
 
-    const { url } = await vercelBlobPut('updated-data.csv', csvData, {
-      access: 'public',
-      contentType: 'text/csv',
+    const { url } = await vercelBlobPut("updated-data.csv", csvData, {
+      access: "public",
+      contentType: "text/csv",
     });
 
     return new Response(JSON.stringify({ file_url: url }), { status: 200 });
   } catch (error) {
     console.error(error);
 
-    return new Response(JSON.stringify({ error: 'Failed to process and upload CSV' }), { status: 500 });
+    return new Response(
+      JSON.stringify({ error: "Failed to process and upload CSV" }),
+      { status: 500 }
+    );
   }
 }
