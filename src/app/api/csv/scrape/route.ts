@@ -75,6 +75,7 @@ const getTicketValue = async (page) => {
 
     for (const selector of selectors) {
       ticketSelect = await page.$(selector);
+
       if (ticketSelect) break;
     }
 
@@ -209,14 +210,14 @@ const processAllRows = async (rows, batchSize, browser) => {
   return results;
 };
 
-export async function POST() {
+export async function POST(request) {
   await chromium.font('https://raw.githack.com/googlei18n/noto-emoji/master/fonts/NotoColorEmoji.ttf');
 
   const isDev = !! process.env.CHROME_EXECUTABLE_PATH;
-  const csvUrl = 'https://mcdyyvdidqq74zwz.public.blob.vercel-storage.com/Teste%20Pr%C3%A1tico%20-%20Jo%C3%A3o%20-%20taggeamento-kdQtKZGo0gVDjPRddDh75nauB0527y.csv';
 
   try {
-    const rows = (await fetchCsvData(csvUrl)).slice(0, 5);
+    const csvText = await request.text();
+    const rows = Papa.parse(csvText, { header: true }).data.slice(0, 10);
 
     const browser = await initializeBrowser(isDev);
     const maxParallel = 10;
