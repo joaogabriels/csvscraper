@@ -6,22 +6,13 @@ import { put as vercelBlobPut } from '@vercel/blob';
 chromium.setHeadlessMode = true;
 chromium.setGraphicsMode = false;
 
-const fetchCsvData = async (url) => {
-  const response = await fetch(url);
-  const text = await response.text();
-
-  return Papa.parse(text, { header: true }).data;
-};
-
 const initializeBrowser = async (isDev) => {
   return puppeteer.launch({
     args: chromium.args,
     defaultViewport: chromium.defaultViewport,
     executablePath: isDev
       ? process.env.CHROME_EXECUTABLE_PATH
-      : await chromium.executablePath(
-          'https://mcdyyvdidqq74zwz.public.blob.vercel-storage.com/chromium-v131.0.1-pack.tar'
-        ),
+      : await chromium.executablePath(process.env.CHROMIUM_URL),
     headless: chromium.headless,
   });
 };
