@@ -11,7 +11,7 @@ Link da planilha: [Planilha](https://docs.google.com/spreadsheets/d/1T7PMFVrtUGh
 ### Requisitos
 - Criar uma conta na [Vercel](https://vercel.com/)
 - Possuir o [Node.js](https://nodejs.org/en/) instalado na LTS mais recente.
-- Para que o puppeteer funcione corretamente em ambiente de preview/produção, é necessário disponibilizar o binário do chromium nesse ambiente, para isso, é necessário hospedar o binário em alguma plataforma de storage, como a própria Vercel, ou o Google Cloud Storage, S3, etc. O binário do chromium pode ser encontrado [aqui](https://github.com/Sparticuz/chromium/releases/tag/v131.0.1). Você usara o link desse binário no arquivo `.env.local` na variável `CHROMIUM_URL`.
+- Para que o puppeteer funcione corretamente, é necessário disponibilizar o binário do chromium nesse ambiente, para isso, é necessário hospedar o binário em alguma plataforma de storage, como a própria Vercel, ou o Google Cloud Storage, S3, etc. O binário do chromium pode ser encontrado [aqui](https://github.com/Sparticuz/chromium/releases/tag/v131.0.1). Você usara o link desse binário no arquivo `.env.local` na variável `CHROMIUM_URL`.
 
 ### Passo a passo
 
@@ -22,7 +22,3 @@ Link da planilha: [Planilha](https://docs.google.com/spreadsheets/d/1T7PMFVrtUGh
 5. Preencha o arquivo `.env.local` com as informações necessárias;
 6. Rodar o comando `npm run dev` para rodar o projeto localmente;
 7. Acesse o endereço `http://localhost:3000` para visualizar o projeto.
-
-### Deploy
-
-Casos deseje fazer o deploy do projeto, basta rodar o comando `vercel` e seguir as instruções. Lembrando que é necessário preencher as variáveis de ambiente no Vercel.
